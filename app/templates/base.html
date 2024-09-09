@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}To-Do List{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="app-header p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{{ url_for('tasks.index') }}" class="text-2xl font-bold text-gray-800">To-Do List</a>
+            <div>
+                {% if current_user.is_authenticated %}
+                    <span class="text-gray-600 mr-4">Welcome, {{ current_user.username }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="btn-custom bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="btn-custom bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container mx-auto mt-8 p-4">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer class="bg-white p-4 mt-8">
+        <div class="container mx-auto text-center text-gray-600">
+            &copy; 2024 To-Do List App
+        </div>
+    </footer>
+</body>
+</html>

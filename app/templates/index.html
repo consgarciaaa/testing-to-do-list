@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white shadow-md rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4">Your Tasks</h1>
+    
+    <form action="{{ url_for('tasks.create_task') }}" method="POST" class="mb-6">
+        <div class="mb-4">
+            <label for="content" class="block text-gray-700 font-bold mb-2">New Task:</label>
+            <textarea id="content" name="content" rows="3" class="input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none" required></textarea>
+        </div>
+        <div class="mb-4">
+            <label for="priority" class="block text-gray-700 font-bold mb-2">Priority:</label>
+            <select id="priority" name="priority" class="input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none">
+                <option value="0">Low</option>
+                <option value="1">Medium</option>
+                <option value="2">High</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-custom bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Add Task</button>
+    </form>
+    
+    <ul id="task-list">
+        {% for task in tasks %}
+        <li class="task-card mb-4 p-4 bg-gray-50 rounded-lg {% if task.priority == 0 %}priority-low{% elif task.priority == 1 %}priority-medium{% else %}priority-high{% endif %}">
+            <div class="task-content mb-2">{{ task.content | safe }}</div>
+            <div class="text-sm text-gray-600">Priority: {{ ['Low', 'Medium', 'High'][task.priority] }}</div>
+            <div class="text-sm text-gray-600">Created: {{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            <div class="mt-2">
+                <button data-task-id="{{ task.id }}" class="edit-task-btn btn-custom bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded text-sm">Edit</button>
+                <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST" class="inline">
+                    <button type="submit" class="btn-custom bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-sm">Delete</button>
+                </form>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.edit-task-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            editTask(taskId);
+        });
+    });
+});
+
+function editTask(taskId) {
+    const taskElement = document.querySelector(`li:has(button[data-task-id="${taskId}"])`);
+    const contentElement = taskElement.querySelector('.task-content');
+    const content = contentElement.innerHTML;
+    
+    const form = document.createElement('form');
+    form.action = `/update_task/${taskId}`;
+    form.method = 'POST';
+    
+    const textarea = document.createElement('textarea');
+    textarea.name = 'content';
+    textarea.value = content;
+    textarea.className = 'input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none mb-2';
+    
+    const prioritySelect = document.createElement('select');
+    prioritySelect.name = 'priority';
+    prioritySelect.className = 'input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none mb-2';
+    ['Low', 'Medium', 'High'].forEach((priority, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = priority;
+        prioritySelect.appendChild(option);
+    });
+    
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.className = 'btn-custom bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-sm';
+    submitButton.textContent = 'Save';
+    
+    form.appendChild(textarea);
+    form.appendChild(prioritySelect);
+    form.appendChild(submitButton);
+    
+    contentElement.replaceWith(form);
+}
+</script>
+{% endblock %}
