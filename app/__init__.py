@@ -17,7 +17,7 @@ def create_app(config_class):
     
     oauth.init_app(app)
     
-    # Configure OAuth clients
+    # Configuración de OAuth
     oauth.register(
         name='google',
         client_id=app.config.get('GOOGLE_CLIENT_ID'),
@@ -31,17 +31,17 @@ def create_app(config_class):
         client_id=app.config.get('GITHUB_CLIENT_ID'),
         client_secret=app.config.get('GITHUB_CLIENT_SECRET'),
         access_token_url='https://github.com/login/oauth/access_token',
-        access_token_params=None,
         authorize_url='https://github.com/login/oauth/authorize',
-        authorize_params=None,
         api_base_url='https://api.github.com/',
         client_kwargs={'scope': 'user:email'},
     )
 
+    # Importar y registrar Blueprints
     from .routes import auth, tasks
     app.register_blueprint(auth.bp)
-    app.register_blueprint(tasks.bp)
+    app.register_blueprint(tasks.bp, url_prefix='/tasks')
 
+    # Cargar el modelo de usuario
     from .models import User
 
     @login_manager.user_loader
