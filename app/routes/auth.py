@@ -35,11 +35,13 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
+
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for('tasks.index'))
         else:
-            flash('Invalid username or password')
+            flash('Invalid username or password')  # Mensaje para credenciales incorrectas
+            return redirect(url_for('auth.login')), 400  # Retorna 400 para manejar error
     return render_template('login.html')
 
 @bp.route('/logout')

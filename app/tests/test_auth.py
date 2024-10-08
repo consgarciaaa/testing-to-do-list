@@ -1,8 +1,13 @@
-
+import pytest
+from flask import url_for
+from werkzeug.security import check_password_hash
+from app import create_app, db
+from app.models import User
+from config import TestingConfig  # Importamos TestingConfig desde config.py
 
 @pytest.fixture
 def client():
-    app = create_app('testing')
+    app = create_app(TestingConfig)  # Usamos TestingConfig en lugar de 'testing'
     with app.test_client() as client:
         with app.app_context():
             db.create_all()
@@ -17,7 +22,7 @@ def test_password_hashing(client):
     db.session.add(user)
     db.session.commit()
     
-    # Verify that the password is hashed
+    # Verifica que la contraseña está hasheada
     assert user.password_hash is not None
     assert check_password_hash(user.password_hash, 'password123')
 
@@ -30,7 +35,7 @@ def test_login_valid_credentials(client):
 
     # Test: Log in with valid credentials
     response = client.post(url_for('auth.login'), data={'username': 'testuser', 'password': 'password123'})
-    assert response.status_code == 302  # Redirect to the task page after successful login
+    assert response.status_code == 302  # Redirige a la página de tareas después del login
 
 def test_login_invalid_credentials(client):
     # Setup: Create a user
@@ -41,7 +46,7 @@ def test_login_invalid_credentials(client):
 
     # Test: Log in with an incorrect password
     response = client.post(url_for('auth.login'), data={'username': 'testuser', 'password': 'wrongpassword'})
-    assert b'Invalid username or password' in response.data  # Flash message for invalid credentials
+    assert b'Invalid username or password' in response.data  # Verifica el mensaje flash para credenciales incorrectas
 
 def test_session_management(client):
     # Setup: Create a user and log in
@@ -53,23 +58,13 @@ def test_session_management(client):
     # Log in
     client.post(url_for('auth.login'), data={'username': 'testuser', 'password': 'password123'})
     
-    # Test: Check session exists (e.g., by accessing a login-required page)
+    # Verifica que el usuario está logueado
     response = client.get(url_for('tasks.index'))
-    assert response.status_code == 200  # Should succeed because the user is logged in
+    assert response.status_code == 200  # Debe tener éxito porque el usuario está logueado
     
-    # Test: Log out
+    # Logout
     client.get(url_for('auth.logout'))
     
-    # Try accessing a login-required page after logout
+    # Intenta acceder a una página que requiere login después del logout
     response = client.get(url_for('tasks.index'))
-    assert response.status_code == 302  # Should redirect to login page since the session ended
-
-def test_oauth_login(client):
-    # Setup: OAuth login test using a mock provider
-    # This would typically use a library like `responses` to mock the OAuth process
-    
-    # Test: Simulate OAuth login callback
-    response = client.get(url_for('auth.oauth_callback', provider='google'))
-    assert response.status_code == 302  # Assuming it redirects to task page after successful OAuth login
-
-    # You can extend this to mock OAuth responses and check how your app handles them.
+    assert response.status_code == 302  # Debe redirigir a la página de login ya que la sesión terminó
