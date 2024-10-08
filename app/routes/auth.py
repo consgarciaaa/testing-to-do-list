@@ -40,8 +40,8 @@ def login():
             login_user(user)
             return redirect(url_for('tasks.index'))
         else:
-            flash('Invalid username or password')  # Mensaje para credenciales incorrectas
-            return redirect(url_for('auth.login')), 400  # Retorna 400 para manejar error
+            # Mostrar el mensaje de error y devolver un código 400
+            return render_template('login.html', error="Invalid username or password"), 400
     return render_template('login.html')
 
 @bp.route('/logout')
@@ -54,10 +54,7 @@ def logout():
 def oauth_login(provider):
     client = oauth.create_client(provider)
     redirect_uri = url_for('auth.oauth_callback', provider=provider, _external=True)
-    print(f"Debug: Redirect URI is {redirect_uri}")  
-    if provider == 'google':
-        session['nonce'] = secrets.token_urlsafe(32)
-        return client.authorize_redirect(redirect_uri, nonce=session['nonce'])
+    session['nonce'] = secrets.token_urlsafe(32) if provider == 'google' else None
     return client.authorize_redirect(redirect_uri)
 
 @bp.route('/login/<provider>/callback')
@@ -68,30 +65,13 @@ def oauth_callback(provider):
     except Exception as e:
         flash(f"Error during OAuth: {str(e)}")
         return redirect(url_for('auth.login'))
-    
-    if provider == 'google':
-        userinfo_endpoint = 'https://openidconnect.googleapis.com/v1/userinfo'
-        resp = client.get(userinfo_endpoint)
-        user_info = resp.json()
-        if resp.status_code != 200:
-            flash(f"Error fetching user info: {user_info.get('error_description', 'Unknown error')}")
-            return redirect(url_for('auth.login'))
-    elif provider == 'microsoft':
-        user_info = client.userinfo()
-    elif provider == 'github':
-        resp = client.get('user')
-        user_info = resp.json()
-        emails = client.get('user/emails').json()
-        user_info['email'] = next(email['email'] for email in emails if email['primary'])
-    else:
-        flash('Unsupported OAuth provider')
-        return redirect(url_for('auth.login'))
-    
+
+    user_info = client.get('userinfo').json() if provider == 'google' else client.get('user').json()
+
     user = User.query.filter_by(email=user_info['email']).first()
     if not user:
-        user = User(username=user_info['email'].split('@')[0], 
-                    email=user_info['email'])
-        user.set_password(secrets.token_urlsafe(16))  # Set a random password for OAuth users
+        user = User(username=user_info['email'].split('@')[0], email=user_info['email'])
+        user.set_password(secrets.token_urlsafe(16))
         db.session.add(user)
         db.session.commit()
     

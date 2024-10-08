@@ -39,7 +39,9 @@ def create_task():
     db.session.add(task)
     db.session.commit()
 
+    # Redireccionar tras la creación
     return redirect(url_for('tasks.index'))
+
 
 @bp.route('/update_task/<int:task_id>', methods=['POST'])
 @login_required
