@@ -37,12 +37,16 @@ def create_app(config_class):
     )
 
     # Importar y registrar Blueprints
+    from .routes.weather import bp as weather_bp
+    app.register_blueprint(weather_bp)
+
+
     from .routes import auth, tasks
     app.register_blueprint(auth.bp)
     app.register_blueprint(tasks.bp, url_prefix='/tasks')
 
     # Cargar el modelo de usuario
-    from .models import User
+    from app.models.user import User  # Ajustado para reflejar la nueva ubicación del modelo
 
     @login_manager.user_loader
     def load_user(user_id):
