@@ -1,6 +1,11 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 import pytest
 from flask import url_for
-from app.models import Task, User
+from app.models.tasks import Task  # Cambiamos la importación para reflejar el nuevo archivo
+from app.models.user import User 
 from app import create_app, db
 from config import TestingConfig
 
@@ -77,8 +82,19 @@ def test_delete_task(client):
 
 def test_create_task_missing_input(client):
     # Simula la creación de una tarea con campos faltantes
-    response = client.post('/tasks/create_task', data={'priority': '1'})
-    assert response.status_code == 400  # Error por datos incompletos
+    response = client.post('/tasks/create_task', data={'priority': '1'}, follow_redirects=True)
+    
+    # Validar el código de estado
+    assert response.status_code == 400, "El código de estado debería ser 400 para datos incompletos."
+    
+    # Validar que la respuesta sea JSON
+    assert response.is_json, "La respuesta debería estar en formato JSON."
+    
+    # Validar el contenido del mensaje de error
+    error_message = response.get_json()
+    assert error_message == {"error": "Content cannot be empty"}, f"Mensaje de error inesperado: {error_message}"
+
+
 
 def test_create_task_markdown_sanitization(client):
     user = User(username='testuser', email='test@example.com')
@@ -143,7 +159,7 @@ def test_task_priority_order(client):
     db.session.add_all([task1, task2])
     db.session.commit()
 
-    response = client.get('/')
+    response = client.get('/tasks/')
     assert response.status_code == 200
     tasks = response.get_data(as_text=True)
     assert tasks.index('High priority task') < tasks.index('Low priority task')  # Verifica que la tarea de alta prioridad aparezca primero
