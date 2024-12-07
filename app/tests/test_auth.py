@@ -118,3 +118,4 @@ def test_logout(client):
     response = client.get('/logout', follow_redirects=True)
     assert response.status_code == 200, "El logout no redirigió correctamente."
     assert b'Login' in response.data, "El usuario no fue redirigido a la página de inicio de sesión."
+
