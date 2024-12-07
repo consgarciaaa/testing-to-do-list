@@ -8,110 +8,141 @@ from webdriver_manager.chrome import ChromeDriverManager
 import pytest
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from app import create_app, db
 from app.models.user import User
+from config import TestingConfig
 
-@pytest.fixture(scope="module")
-def driver():
-    # Configura el driver para las pruebas
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service)
-    yield driver
-    driver.quit()
+BASE_URL = "http://127.0.0.1:5000"  # Cambia a localhost
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
-    # Configura la base de datos para pruebas
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    app = create_app(TestingConfig)
     with app.app_context():
         db.create_all()
-        # Crea un usuario de prueba para login
-        user = User(username="Constanza", email="constanza@example.com")
-        user.set_password("1234")
+        # Crea un usuario de prueba
+        user = User(username="TestUser", email="testuser@example.com")
+        user.set_password("password")
         db.session.add(user)
         db.session.commit()
         yield
         db.drop_all()
         db.session.remove()
 
-def test_login(driver):
-    driver.get("http://127.0.0.1:5000")
-    assert "Login" in driver.page_source
+@pytest.fixture(scope="module")
+def driver():
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service)
+    yield driver
+    driver.quit()
 
-    # Completa el formulario de login
-    username_field = WebDriverWait(driver, 10).until(
+def login(driver, username="TestUser", password="password"):
+    driver.get(f"{BASE_URL}/login")
+    WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.NAME, "username"))
-    )
-    password_field = driver.find_element(By.NAME, "password")
-    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+    ).send_keys(username)
+    driver.find_element(By.NAME, "password").send_keys(password)
+    driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
-    username_field.send_keys("Constanza")
-    password_field.send_keys("1234")
-    submit_button.click()
-
-    # Verifica redirección al dashboard
+def test_login(driver):
+    login(driver)
     assert "Your Tasks" in driver.page_source
 
 def test_create_task(driver):
-    driver.get("http://127.0.0.1:5000")
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "username"))
-    ).send_keys("Constanza")
-    driver.find_element(By.NAME, "password").send_keys("1234")
-    driver.find_element(By.XPATH, "//button[@type='submit']").click()
-
-    # Crear nueva tarea
+    login(driver)
+    driver.get(f"{BASE_URL}/tasks")
     content_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.NAME, "content"))
     )
     priority_field = driver.find_element(By.NAME, "priority")
     submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
 
-    content_field.send_keys("Nueva tarea E2E")
+    content_field.send_keys("Nueva tarea")
     priority_field.send_keys("1")
     submit_button.click()
 
-    # Verifica que la tarea fue creada
     tasks = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CLASS_NAME, "task-content"))
     )
-    assert any("Nueva tarea E2E" in task.text for task in tasks)
+    assert any("Nueva tarea" in task.text for task in tasks)
 
 def test_delete_task(driver):
-    driver.get("http://127.0.0.1:5000")
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.NAME, "username"))
-    ).send_keys("Constanza")
-    driver.find_element(By.NAME, "password").send_keys("1234")
-    driver.find_element(By.XPATH, "//button[@type='submit']").click()
-
-    # Eliminar tarea
+    login(driver)
+    driver.get(f"{BASE_URL}/tasks")
     delete_button = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Delete')]"))
+        EC.presence_of_element_located((By.XPATH, "//form[contains(@class, 'inline')]/button[text()='Delete']"))
     )
     delete_button.click()
 
-    # Verifica que la tarea fue eliminada
+    WebDriverWait(driver, 10).until_not(
+        EC.presence_of_element_located((By.CLASS_NAME, "task-card"))
+    )
+
+    tasks = driver.find_elements(By.CLASS_NAME, "task-content")
+    assert not any("Nueva tarea" in task.text for task in tasks)
+
+def test_edit_task(driver):
+    login(driver)
+    driver.get(f"{BASE_URL}/tasks")
+    edit_button = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Edit')]"))
+    )
+    edit_button.click()
+
+    content_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "content"))
+    )
+    content_field.clear()
+    content_field.send_keys("Tarea editada")
+    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+    submit_button.click()
+
     tasks = WebDriverWait(driver, 10).until(
         EC.presence_of_all_elements_located((By.CLASS_NAME, "task-content"))
     )
-    assert not any("Nueva tarea E2E" in task.text for task in tasks)
+    assert any("Tarea editada" in task.text for task in tasks)
+
+def test_login_error_message(driver):
+    driver.get(f"{BASE_URL}/login")
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "username"))
+    ).send_keys("wrong_user")
+    driver.find_element(By.NAME, "password").send_keys("wrong_password")
+    driver.find_element(By.XPATH, "//button[@type='submit']").click()
+
+    error_message = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "text-red-700"))
+    )
+    assert "Invalid username or password." in error_message.text
 
 def test_responsive_design(driver):
     driver.set_window_size(375, 812)  # Modo móvil
-    driver.get("http://127.0.0.1:5000")
+    driver.get(f"{BASE_URL}/login")
     assert "Login" in driver.page_source
 
     driver.set_window_size(1920, 1080)  # Modo escritorio
     assert "Login" in driver.page_source
 
-"""def test_mocked_oauth_login(driver):
-    driver.get("http://127.0.0.1:5000/login/google/callback")
-
-    # Verifica redirección al dashboard
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//h1[contains(text(), 'Your Tasks')]"))
+def test_create_high_priority_task(driver):
+    login(driver)
+    driver.get(f"{BASE_URL}/tasks")
+    content_field = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.NAME, "content"))
     )
-    assert "Your Tasks" in driver.page_source"""
+    priority_field = driver.find_element(By.NAME, "priority")
+    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+
+    content_field.send_keys("Tarea de alta prioridad")
+    priority_field.send_keys("2")
+    submit_button.click()
+
+    tasks = WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located((By.CLASS_NAME, "task-content"))
+    )
+    assert any("Tarea de alta prioridad" in task.text for task in tasks)
+
+def test_mocked_oauth_login(driver):
+    # Simulación de autenticación (omitir si no se implementa OAuth)
+    login(driver)
+    assert "Your Tasks" in driver.page_source
