@@ -24,12 +24,14 @@ def create_task():
 
     # Validación para contenido vacío
     if not content:
+        print("Error: Content cannot be empty.")
         return jsonify({"error": "Content cannot be empty"}), 400
 
     # Validación para prioridad no numérica
     try:
         priority = int(priority)
     except ValueError:
+        print("Error: Invalid priority.")
         return jsonify({"error": "Invalid priority"}), 400
 
     # Procesamiento de Markdown y sanitización
@@ -48,7 +50,10 @@ def create_task():
     db.session.add(task)
     db.session.commit()
 
+    print(f"Tarea creada exitosamente: {task}")
+
     # Redireccionar tras la creación
+    print("Redireccionando al índice de tareas.")
     return redirect(url_for('tasks.index'))
 
 
@@ -131,3 +136,17 @@ def create_task_api():
         'priority': new_task.priority,
         'created_at': new_task.created_at.isoformat()
     }), 201
+
+@bp.route('/view_task/<int:task_id>', methods=['GET'])
+@login_required
+def view_task(task_id):
+    task = Task.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    return jsonify({
+        'id': task.id,
+        'content': task.content,
+        'priority': task.priority,
+        'created_at': task.created_at.isoformat(),
+    }), 200

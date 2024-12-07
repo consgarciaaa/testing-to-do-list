@@ -1,50 +1,49 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, login_required, logout_user
 from werkzeug.security import generate_password_hash
-from app import db, oauth  # Ajustamos las rutas de importación
-from app.models.user import User  # Importación desde el archivo correcto
+from app import db, oauth
+from app.models.user import User
 import secrets
 import requests
+from flask import abort
 
 bp = Blueprint('auth', __name__)
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username').strip()
-        email = request.form.get('email').strip()
-        password = request.form.get('password')
-        
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+
         # Validación de entrada
         if not username or not email or not password:
-            flash('All fields are required.')
-            return redirect(url_for('auth.register'))
+            flash('All fields are required.', 'error')
+            return render_template('register.html', error='All fields are required.'), 400
 
         # Verificar si el usuario o el email ya existen
         user = User.query.filter((User.username == username) | (User.email == email)).first()
         if user:
-            flash('Username or email already exists.')
-            return redirect(url_for('auth.register'))
-        
+            flash('Username or email already exists.', 'error')
+            return render_template('register.html', error='Username or email already exists.'), 400
+
         # Crear un nuevo usuario
         new_user = User(username=username, email=email)
-        new_user.set_password(password)
+        new_user.set_password(password)  # Hasheando la contraseña
         db.session.add(new_user)
         db.session.commit()
-        
-        flash('Registration successful. Please log in.')
-        return redirect(url_for('auth.login'))
-    
-    return render_template('register.html')
 
+        flash('Registration successful. Please log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('register.html')
 @bp.route('/')
 def home():
     return redirect(url_for('auth.login'))
 
-
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
-    weather = None  # Variable para guardar la información del clima
+    weather = None
     error = None
 
     # Obtener clima desde la API
@@ -73,7 +72,6 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
 
-        # Validar credenciales
         if user and user.check_password(password):
             login_user(user)
             return redirect(url_for('tasks.index'))
@@ -109,13 +107,11 @@ def oauth_callback(provider):
         flash(f"Error during OAuth: {str(e)}")
         return redirect(url_for('auth.login'))
 
-    # Obtener información del usuario
     if provider == 'google':
         user_info = client.get('userinfo').json()
     else:
         user_info = client.get('user').json()
 
-    # Verificar si el usuario existe o crearlo
     user = User.query.filter_by(email=user_info.get('email')).first()
     if not user:
         user = User(

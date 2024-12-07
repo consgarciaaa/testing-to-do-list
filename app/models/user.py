@@ -7,13 +7,13 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    tasks = db.relationship('Task', backref='user', lazy=True)
 
-    # Constructor personalizado para aceptar 'password'
-    def __init__(self, username, email, password):
+    # Constructor actualizado
+    def __init__(self, username, email, password=None):
         self.username = username
         self.email = email
-        self.set_password(password)
+        if password:  # Si se proporciona una contraseña, se genera el hash
+            self.set_password(password)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
