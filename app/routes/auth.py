@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash
 from app import db, oauth
 from app.models.user import User
 import secrets
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 import requests
 from flask import abort
 
@@ -126,10 +127,10 @@ def oauth_callback(provider):
     return redirect(url_for('tasks.index'))"""
 
 
-@bp.route('/login/<provider>/callback')
-def oauth_callback(provider):
+@bp.route('/login/google/callback')
+def oauth_callback():
     if current_app.config['TESTING']:
-        # Simula un usuario autenticado para pruebas
+        # Para pruebas simuladas
         user = User.query.filter_by(email='test_oauth@example.com').first()
         if not user:
             user = User(username='test_oauth', email='test_oauth@example.com')
@@ -139,16 +140,21 @@ def oauth_callback(provider):
         login_user(user)
         return redirect(url_for('tasks.index'))
 
-    # Flujo real de OAuth (fuera del entorno de pruebas)
-    client = oauth.create_client(provider)
+    # Flujo real de OAuth
+    client = oauth.create_client('google')
     token = client.authorize_access_token()
-    user_info = client.get('userinfo').json() if provider == 'google' else client.get('user').json()
+    user_info = client.get('userinfo').json()
 
-    user = User.query.filter_by(email=user_info.get('email')).first()
+    # Procesar información del usuario
+    user = User.query.filter_by(email=user_info['email']).first()
     if not user:
-        user = User(username=user_info.get('email').split('@')[0], email=user_info.get('email'))
-        user.set_password(secrets.token_urlsafe(16))
+        user = User(
+            username=user_info['email'].split('@')[0],
+            email=user_info['email']
+        )
+        user.set_password(secrets.token_urlsafe(16))  # Contraseña aleatoria
         db.session.add(user)
         db.session.commit()
+
     login_user(user)
     return redirect(url_for('tasks.index'))
