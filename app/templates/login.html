@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+
 <div class="max-w-md mx-auto bg-white shadow-md rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
     
@@ -41,5 +42,44 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Contenedor Dinámico para las Películas -->
+    <div id="recommended-movies" class="mt-8"></div>
 </div>
+
 {% endblock %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Verifica si estamos en la página de login
+        if (window.location.pathname === '/login') {
+            // Hacer una solicitud a la API de películas
+            fetch('/api/movies/search?query=Inception')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const moviesContainer = document.getElementById('recommended-movies');
+                    moviesContainer.innerHTML = `
+                        <h3 class="text-xl font-bold mb-4 text-center">Recommended Movies:</h3>
+                        <ul class="space-y-4">
+                            ${data.map(movie => `
+                                <li class="p-4 bg-gray-50 rounded-lg shadow-md">
+                                    <strong>${movie.title}</strong> 
+                                    <span class="text-sm text-gray-600">(${movie.release_date})</span>
+                                    <p class="mt-2 text-gray-700">${movie.overview}</p>
+                                    <p class="mt-1 text-gray-600"><strong>Rating:</strong> ${movie.vote_average}</p>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `;
+                })
+                .catch(error => {
+                    console.error('There has been a problem with your fetch operation:', error);
+                });
+        }
+    });
+</script>
