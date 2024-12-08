@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flash-messages">
+      {% for category, message in messages %}
+        <li class="alert {{ 'alert-' + category }}">
+          {{ message }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flash-messages">
+      {% for category, message in messages %}
+        <li class="alert {{ 'alert-' + category }}">
+          {{ message }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
 <div class="bg-white shadow-md rounded-lg p-6">
     <h1 class="text-2xl font-bold mb-4">Your Tasks</h1>
     
@@ -22,7 +46,7 @@
     
     <ul id="task-list">
         {% for task in tasks %}
-        <li class="task-card mb-4 p-4 bg-gray-50 rounded-lg {% if task.priority == 0 %}priority-low{% elif task.priority == 1 %}priority-medium{% else %}priority-high{% endif %}">
+        <li data-task-id="{{ task.id }}" class="task-card mb-4 p-4 bg-gray-50 rounded-lg {% if task.priority == 0 %}priority-low{% elif task.priority == 1 %}priority-medium{% else %}priority-high{% endif %}">
             <div class="task-content mb-2">{{ task.content | safe }}</div>
             <div class="text-sm text-gray-600">Priority: {{ ['Low', 'Medium', 'High'][task.priority] }}</div>
             <div class="text-sm text-gray-600">Created: {{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
@@ -35,6 +59,8 @@
         </li>
         {% endfor %}
     </ul>
+    
+
 </div>
 
 <script>
@@ -48,39 +74,73 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function editTask(taskId) {
-    const taskElement = document.querySelector(`li:has(button[data-task-id="${taskId}"])`);
+    const taskElement = document.querySelector(`li[data-task-id="${taskId}"]`);
+    if (!taskElement) {
+        alert("Task not found!");
+        return;
+    }
+
     const contentElement = taskElement.querySelector('.task-content');
-    const content = contentElement.innerHTML;
-    
+    const content = contentElement.innerHTML.trim(); // Obtiene contenido HTML limpio
+
+    const priorityText = taskElement.querySelector('.text-sm.text-gray-600').innerText.split(': ')[1];
+    const priorities = ['Low', 'Medium', 'High'];
+    const currentPriorityIndex = priorities.indexOf(priorityText);
+
+    // Crear formulario de edición
     const form = document.createElement('form');
     form.action = `/update_task/${taskId}`;
     form.method = 'POST';
-    
+
+    // Crear textarea
     const textarea = document.createElement('textarea');
     textarea.name = 'content';
-    textarea.value = content;
+    textarea.value = content; 
     textarea.className = 'input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none mb-2';
-    
+
+    // Crear select para prioridad
     const prioritySelect = document.createElement('select');
     prioritySelect.name = 'priority';
     prioritySelect.className = 'input-custom w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none mb-2';
-    ['Low', 'Medium', 'High'].forEach((priority, index) => {
+
+    // Agregar opciones de prioridad
+    priorities.forEach((priority, index) => {
         const option = document.createElement('option');
         option.value = index;
         option.textContent = priority;
+        if (index === currentPriorityIndex) {
+            option.selected = true;
+        }
         prioritySelect.appendChild(option);
     });
-    
+
+    // Crear botón de guardar
     const submitButton = document.createElement('button');
     submitButton.type = 'submit';
     submitButton.className = 'btn-custom bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-sm';
     submitButton.textContent = 'Save';
-    
+
+    // Agregar elementos al formulario
     form.appendChild(textarea);
     form.appendChild(prioritySelect);
     form.appendChild(submitButton);
+
+    // Reemplazar contenido por formulario
+    taskElement.innerHTML = '';
+    taskElement.appendChild(form);
+
+    // Validar contenido antes de enviar
+    form.onsubmit = function(event) {
+        if (!textarea.value.trim()) {
+            event.preventDefault();
+            alert("Content cannot be empty!");
+        } else {
+        console.log("Content:", textarea.value);
+        console.log("Priority:", prioritySelect.value);
+        // Permite el envío del formulario si todo está bien
+    }
+};
+        }
     
-    contentElement.replaceWith(form);
-}
 </script>
 {% endblock %}

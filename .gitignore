@@ -3,10 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-
 # Virtual environment
 venv/
 env/
+.venv/
 .env
 
 # Flask
@@ -15,17 +15,60 @@ instance/
 
 # SQLite database
 *.db
+*.sqlite3
 
 # IDE specific files
 .vscode/
 .idea/
+*.iml
 
 # OS generated files
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
 
 # Logs
 *.log
 
 # Temporary files
 *.tmp
+*.bak
+*.old
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Docker (si usas Docker más adelante)
+.dockerignore
+docker-compose.override.yml
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# pytest
+.cache/
+pytest_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Secrets
+config/*.env
+keys/
+*.pem
+*.crt
+*.key
+
+# Node.js (si llegas a usar npm o Node.js)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Deployment-related files
+.gcloudignore
+*.tfstate
